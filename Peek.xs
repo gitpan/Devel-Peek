@@ -836,12 +836,14 @@ I32 lim;
 	break;
     case SVt_PVHV:
 	m_printf(level, PerlIO_stderr(), "  ARRAY = 0x%lx",(long)HvARRAY(sv));
-	if (HvARRAY(sv)) {
+	if (HvARRAY(sv) && HvKEYS(sv)) {
 	    /* Show distribution of HEs in the ARRAY */
-	    int freq[10];
+	    int freq[200];
 #define FREQ_MAX (sizeof freq / sizeof freq[0] - 1)
 	    int i;
 	    int max = 0;
+	    U32 pow2 = 2, keys = HvKEYS(sv);
+	    double theoret, sum = 0;
 
 	    PerlIO_printf(PerlIO_stderr(), "  (");
 	    Zero(freq, FREQ_MAX + 1, int);
@@ -854,14 +856,28 @@ I32 lim;
 	        if (max < count) max = count;
 	    }
 	    for (i = 0; i <= max; i++) {
-		PerlIO_printf(PerlIO_stderr(), "%d%s:%d",
-					       i,
-				               (i == FREQ_MAX) ? "+" : "",
-                                               freq[i]);
-		if (i != max)
-		    PerlIO_printf(PerlIO_stderr(), ", ");
+		if (freq[i]) {
+		    PerlIO_printf(PerlIO_stderr(), "%d%s:%d",
+				  i,
+				  (i == FREQ_MAX) ? "+" : "",
+				  freq[i]);
+		    if (i != max)
+			PerlIO_printf(PerlIO_stderr(), ", ");
+		}
             }
 	    PerlIO_putc(PerlIO_stderr(), ')');
+	    /* Now calculate quality wrt theoretical value */
+	    for (i = max; i > 0; i--) { /* Precision: count down. */
+		sum += freq[i] * i * i;
+            }
+	    while (keys = keys >> 1)
+		pow2 = pow2 << 1;
+	    /* Approximate by Poisson distribution */
+	    theoret = HvKEYS(sv);
+	    theoret += theoret * theoret/pow2;
+	    PerlIO_putc(PerlIO_stderr(), '\n');
+	    m_printf(level, PerlIO_stderr(), "  hash quality = %.1f%%",
+		     theoret/sum*100);
 	}
 	PerlIO_putc(PerlIO_stderr(), '\n');
 	m_printf(level, PerlIO_stderr(), "  KEYS = %ld\n", (long)HvKEYS(sv));

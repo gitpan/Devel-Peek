@@ -60,3 +60,5 @@
 	Should compile without MYMALLOC too.
 0.94:
 	Had problems with HEf_SVKEY magic.
+0.95:
+	Added "hash quality" output to estimate Perl's hash functions.
