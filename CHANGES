@@ -29,3 +29,11 @@
 0.85:
 	By Gisle Aas: format SvPVX, print magic (but not unrefcounted mg_obj);
 	A lot of new fields stolen from sv_dump();
+0.86:
+	By Gisle Aas:
+	   - Updated the documentation.
+	   - Move string printer to it's own function: fprintpv()
+	   - Use it to print PVs, HV keys, MG_PTR
+	   - Don't print IV for hashes as KEY is the same field
+	   - Tag GvSTASH as "GvSTASH" in order to not confuse it with
+	     the other STASH field, e.g.  Dump(bless \*foo, "bar")

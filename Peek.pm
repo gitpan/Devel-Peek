@@ -38,6 +38,10 @@ function.
 Function C<DumpArray()> allows dumping of multiple values (useful when you
 need to analize returns of functions).
 
+The global variable $Devel::Peek::pv_limit can be set to limit the
+number of character printed in various string values.  Setting it to 0
+means no limit.
+
 =head1 EXAMPLES
 
 The following examples don't attempt to show everything as that would be a
@@ -65,14 +69,16 @@ The output:
           REFCNT = 1
           FLAGS = (POK,pPOK)
           IV = 0
-          PV = 0xb2048 "hello"
+          PV = 0xb2048 "hello"\0
           CUR = 5
           LEN = 6
 
 This says C<$a> is an SV, a scalar.  The scalar is a PVIV, a string.
 Its reference count is 1.  It has the C<POK> flag set, meaning its
 current PV field is valid.  Because POK is set we look at the PV item
-to see what is in the scalar.  If the FLAGS had been IOK we would look
+to see what is in the scalar.  The \0 at the end indicate that this
+PV is properly NUL-terminated.
+If the FLAGS had been IOK we would look
 at the IV item.  CUR indicates the number of characters in the PV.
 LEN indicates the number of bytes requested for the PV (one more than
 CUR, in this case, because LEN includes an extra byte for the
@@ -241,7 +247,6 @@ The output:
         SV = PVHV(0xbd448)
           REFCNT = 1
           FLAGS = ()
-          IV = 1
           NV = 0
           ARRAY = 0xbd748
           KEYS = 1
@@ -402,7 +407,7 @@ require DynaLoader;
 );
 %EXPORT_TAGS = ('ALL' => \@EXPORT_OK);
 
-$VERSION = $VERSION = 0.85;
+$VERSION = $VERSION = 0.86;
 
 bootstrap Devel::Peek;
 

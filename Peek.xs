@@ -68,6 +68,67 @@ fprintgg(file, name, sv, level)
 	}
 }
 
+
+static void
+fprintpv(file, pv, cur, len)
+    PerlIO *file;
+    char *pv;
+    STRLEN cur;
+    STRLEN len;
+{
+    SV  *pv_lim_sv = perl_get_sv("Devel::Peek::pv_limit", FALSE);
+    STRLEN pv_lim = pv_lim_sv ? SvIV(pv_lim_sv) : 0;
+    STRLEN out = 0;
+    int truncated = 0;
+    int nul_terminated = len > cur && pv[cur] == '\0';
+
+    PerlIO_putc(file, '"');
+    for (; cur--; pv++) {
+	if (pv_lim && out >= pv_lim) {
+            truncated++;
+	    break;
+        }
+        if (isPRINT(*pv)) {
+	    STRLEN len = 2;
+            switch (*pv) {
+		case '\t':
+		    PerlIO_puts(file, "\\t"); break;
+		case '\n':
+		    PerlIO_puts(file, "\\n"); break;
+		case '\r':
+		    PerlIO_puts(file, "\\r"); break;
+		case '\f':
+		    PerlIO_puts(file, "\\f"); break;
+		case '"':
+		    PerlIO_puts(file, "\\\""); break;
+		case '\\':
+		    PerlIO_puts(file, "\\\\"); break;
+		default:
+		    PerlIO_putc(file, *pv);
+		    len = 1;
+                    break;
+            }
+            out += len;
+        } else {
+	    if (cur && isDIGIT(*(pv+1))) {
+		PerlIO_printf(file, "\\%03o", *pv);
+		out += 4;
+	    } else {
+		char tmpbuf[5];
+		sprintf(tmpbuf, "\\%o", *pv);
+		PerlIO_puts(file, tmpbuf);
+		out += strlen(tmpbuf);
+	    }
+        }
+    }
+    PerlIO_putc(file, '"');
+    if (truncated)
+       PerlIO_puts(file, "...");
+    if (nul_terminated)
+       PerlIO_puts(file, "\\0");
+}
+ 
+
 void
 DumpMagic(level,mg,lim)
 I32 level;
@@ -148,12 +209,8 @@ I32 lim;
         if (mg->mg_ptr) {
 	    m_printf(level, PerlIO_stderr(), "    MG_PTR = %p", mg->mg_ptr);
 	    if (mg->mg_len) {
-	        int i;
-	        PerlIO_printf(PerlIO_stderr(), " \"");
-	        for (i = 0; i < mg->mg_len; i++) {
-	            PerlIO_putc(PerlIO_stderr(), mg->mg_ptr[i]);
-                }
-	        PerlIO_printf(PerlIO_stderr(), "\"");
+                PerlIO_putc(PerlIO_stderr(), ' ');
+                fprintpv(PerlIO_stderr(), mg->mg_ptr, mg->mg_len, 0);
             }
             PerlIO_putc(PerlIO_stderr(), '\n');
         }
@@ -181,8 +238,6 @@ I32 lim;
     I32 count;
     U32 flags;
     U32 type;
-    SV  *pv_lim_sv = perl_get_sv("Devel::Peek::pv_limit", FALSE);
-    STRLEN pv_lim = pv_lim_sv ? SvIV(pv_lim_sv) : 0;
 
     level++;
     if (!sv) {
@@ -333,8 +388,12 @@ I32 lim;
 	PerlIO_printf(PerlIO_stderr(),"UNKNOWN%s\n", tmpbuf);
 	return;
     }
-    if (type >= SVt_PVIV || type == SVt_IV)
-	m_printf(level, PerlIO_stderr(), "  IV = %ld\n", (long)SvIVX(sv));
+    if ((type >= SVt_PVIV && type != SVt_PVHV) || type == SVt_IV) {
+	m_printf(level, PerlIO_stderr(), "  IV = %ld", (long)SvIVX(sv));
+	if (SvOOK(sv))
+	    PerlIO_printf(PerlIO_stderr(), "  (OFFSET)");
+	PerlIO_putc(PerlIO_stderr(), '\n');
+    }
     if (type >= SVt_PVNV || type == SVt_NV)
 	m_printf(level, PerlIO_stderr(), "  NV = %.*g\n", DBL_DIG, SvNVX(sv));
     if (SvROK(sv)) {
@@ -350,55 +409,9 @@ I32 lim;
 	return;
     if (type <= SVt_PVLV) {
 	if (SvPVX(sv)) {
-	    U8 *c = SvPVX(sv);
-	    STRLEN out = 0;
-	    /* STRLEN plen = SvCUR(sv) + 1; */  /* to verify trailing '\0' */
-	    STRLEN plen = SvCUR(sv);
-
-/*	    if (plen > SvLEN(sv))
-	        plen = SvLEN(sv); */
-	    m_printf(level, PerlIO_stderr(),"  PV = 0x%lx \"",(long)SvPVX(sv));
-            for (; plen--; c++) {
-	       if (pv_lim && out > pv_lim) {
-		   PerlIO_printf(PerlIO_stderr(), "...");
-		   break;
-               }
-               if (isPRINT(*c)) {
-		   STRLEN len = 2;
-		   switch (*c) {
-		       case '\t':
-			   PerlIO_puts(PerlIO_stderr(), "\\t"); break;
-		       case '\n':
-			   PerlIO_puts(PerlIO_stderr(), "\\n"); break;
-		       case '\r':
-			   PerlIO_puts(PerlIO_stderr(), "\\r"); break;
-		       case '\f':
-			   PerlIO_puts(PerlIO_stderr(), "\\f"); break;
-		       case '"':
-			   PerlIO_puts(PerlIO_stderr(), "\\\""); break;
-		       case '\\':
-			   PerlIO_puts(PerlIO_stderr(), "\\\\"); break;
-		       default:
-		           PerlIO_putc(PerlIO_stderr(), *c);
-		           len = 1;
-                   }
-                   out += len;
-               } else {
-	           if (plen && isDIGIT(*(c+1))) {
-		       PerlIO_printf(PerlIO_stderr(), "\\%03o", *c);
-		       out += 4;
-		   } else {
-		       char tmpbuf[32];
-		       sprintf(tmpbuf, "\\%o", *c);
-		       PerlIO_puts(PerlIO_stderr(), tmpbuf);
-		       out += strlen(tmpbuf);
-		   }
-               }
-           }
-	   PerlIO_printf(PerlIO_stderr(), "\"%s\n%*s  CUR = %ld\n%*s  LEN = %ld\n",
-			 		   (SvLEN(sv) > SvCUR(sv)
-					    && SvPVX(sv)[SvCUR(sv)] == 0
-					    ? "\\0" : ""),
+	    m_printf(level, PerlIO_stderr(),"  PV = 0x%lx ", (long)SvPVX(sv));
+	    fprintpv(PerlIO_stderr(), SvPVX(sv), SvCUR(sv), SvLEN(sv));
+	    PerlIO_printf(PerlIO_stderr(), "\n%*s  CUR = %ld\n%*s  LEN = %ld\n",
 		                           2*level - 2, "", (long)SvCUR(sv),
 	                                   2*level - 2, "", (long)SvLEN(sv));
 	} else
@@ -467,7 +480,9 @@ I32 lim;
 	  loopDump--;
 	  hv_iterinit(hv);
 	  while ((elt = hv_iternextsv(hv,&key,&len)) && count--) {
-	    m_printf(level, PerlIO_stderr(), "Elt \"%s\" => 0x%lx\n", key, elt);
+	    m_printf(level, PerlIO_stderr(), "Elt ");
+            fprintpv(PerlIO_stderr(), key, len, 0);
+            PerlIO_printf(PerlIO_stderr(), " => 0x%lx\n", elt);
 	    DumpLevel(level,elt,lim);
 	  }
 	  hv_iterinit(hv);		/* Return to status quo */
@@ -500,7 +515,7 @@ I32 lim;
     case SVt_PVGV:
 	m_printf(level, PerlIO_stderr(), "  NAME = \"%s\"\n", GvNAME(sv));
 	m_printf(level, PerlIO_stderr(), "  NAMELEN = %ld\n", (long)GvNAMELEN(sv));
-	fprinth(PerlIO_stderr(), "  STASH", GvSTASH(sv));
+	fprinth(PerlIO_stderr(), "  GvSTASH", GvSTASH(sv));
 	m_printf(level, PerlIO_stderr(), "  GP = 0x%lx\n", (long)GvGP(sv));
 	m_printf(level, PerlIO_stderr(), "    SV = 0x%lx\n", (long)GvSV(sv));
 	m_printf(level, PerlIO_stderr(), "    REFCNT = %ld\n", (long)GvREFCNT(sv));
