@@ -37,3 +37,4 @@ Dump ($x, 10);
 
 mstat("Point 2");
 
+DeadCode;

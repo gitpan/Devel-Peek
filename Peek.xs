@@ -309,11 +309,121 @@ I32 lim;
     }
 }
 
+#ifdef PURIFY
+#define DeadCode() NULL
+#else
+
+SV *
+DeadCode()
+{
+    SV* sva;
+    SV* sv, *dbg;
+    SV* ret = newRV_noinc((SV*)newAV());
+    register SV* svend;
+    int tm = 0, tref = 0, ts = 0, ta = 0, tas = 0;
+
+    for (sva = sv_arenaroot; sva; sva = (SV*)SvANY(sva)) {
+	svend = &sva[SvREFCNT(sva)];
+	for (sv = sva + 1; sv < svend; ++sv) {
+	    if (SvTYPE(sv) == SVt_PVCV) {
+		CV *cv = (CV*)sv;
+		AV* padlist = CvPADLIST(cv), *argav;
+		SV** svp;
+		SV** pad;
+		int i = 0, j, levelm, totm = 0, levelref, totref = 0;
+		int levels, tots = 0, levela, tota = 0, levelas, totas = 0;
+		int dumpit = 0;
+
+		if (CvXSUB(sv)) {
+		    continue;		/* XSUB */
+		}
+		if (!CvGV(sv)) {
+		    continue;		/* file-level scope. */
+		}
+		if (!CvROOT(cv)) {
+		    /* fprintf(stderr, "  no root?!\n"); */
+		    continue;		/* autoloading stub. */
+		}
+		fprintgg(stderr, "GVGV::GV", CvGV(sv));
+		if (CvDEPTH(cv)) {
+		    fprintf(stderr, "  busy\n");
+		    continue;
+		}
+		svp = AvARRAY(padlist);
+		while (++i <= AvFILL(padlist)) { /* Depth. */
+		    SV **args;
+		    
+		    pad = AvARRAY((AV*)svp[i]);
+		    argav = (AV*)pad[0];
+		    args = AvARRAY(argav);
+		    levelm = levels = levelref = levelas = 0;
+		    levela = sizeof(SV*) * (AvMAX(argav) + 1);
+		    if (AvREAL(argav)) {
+			for (j = 0; j < AvFILL(argav); j++) {
+			    if (SvROK(args[j])) {
+				fprintf(stderr, "     ref in args!\n");
+				levelref++;
+			    }
+			    /* else if (SvPOK(args[j]) && SvPVX(args[j])) { */
+			    else if (SvTYPE(args[j]) >= SVt_PV && SvLEN(args[j])) {
+				levelas += SvLEN(args[j]);
+			    }
+			}
+		    }
+		    for (j = 1; j < AvFILL((AV*)svp[1]); j++) {	/* Vars. */
+			if (SvROK(pad[j])) {
+			    levelref++;
+			    Dump(pad[j],4);
+			    dumpit = 1;
+			}
+			/* else if (SvPOK(pad[j]) && SvPVX(pad[j])) { */
+			else if (SvTYPE(pad[j]) >= SVt_PVAV) {
+			    if (!SvPADMY(pad[j])) {
+				levelref++;
+				Dump(pad[j],4);
+				dumpit = 1;
+			    }
+			}
+			else if (SvTYPE(pad[j]) >= SVt_PV && SvLEN(pad[j])) {
+			    int db_len = SvLEN(pad[j]);
+			    SV *db_sv = pad[j];
+			    levels++;
+			    levelm += SvLEN(pad[j]);
+				/* Dump(pad[j],4); */
+			}
+		    }
+		    fprintf(stderr, "    level %i: refs: %i, strings: %i in %i,\n        argsarray: %i, argsstrings: %i\n", 
+			    i, levelref, levelm, levels, levela, levelas);
+		    totm += levelm;
+		    tota += levela;
+		    totas += levelas;
+		    tots += levels;
+		    totref += levelref;
+		    if (dumpit) Dump((SV*)cv,2);
+		}
+		if (AvFILL(padlist) > 1) {
+		    fprintf(stderr, "  total: refs: %i, strings: %i in %i\n        argsarrays: %i, argsstrings: %i\n", 
+			    totref, totm, tots, tota, totas);
+		}
+		tref += totref;
+		tm += totm;
+		ts += tots;
+		ta += tota;
+		tas += totas;
+	    }
+	}
+    }
+    fprintf(stderr, "total: refs: %i, strings: %i in %i\nargsarray: %i, argsstrings: %i\n", tref, tm, ts, ta, tas);
+
+    return ret;
+}
+#endif /* !PURIFY */
+
 #ifdef DEBUGGING_MSTATS
 #   define mstat(str) dump_mstats(str)
 #else
 #   define mstat(str) \
-	fprintf(stderr. "%s: perl not compiled with DEBUGGING_MSTATS\n",str);
+	fprintf(stderr, "%s: perl not compiled with DEBUGGING_MSTATS\n",str);
 #endif
 
 MODULE = Devel::Peek		PACKAGE = Devel::Peek
@@ -356,3 +466,5 @@ SV *	sv
 	PUSHs(sv);
     }
 
+SV *
+DeadCode()

@@ -26,11 +26,13 @@ the first few sections of L<perlguts>.
 
 Devel::Peek supplies a C<Dump()> function which can dump a raw Perl
 datatype, and C<mstat("marker")> function to report on memory usage
-(if perl is compiled with corresponding option).  It also supplies
-C<SvREFCNT()>, C<SvREFCNT_inc()>, and C<SvREFCNT_dec()> which can
-query, increment, and decrement reference counts on SVs.  This
-document will take a passive, and safe, approach to data debugging and
-for that it will describe only the C<Dump()> function.
+(if perl is compiled with corresponding option).  The function
+DeadCode() provides statistics on the data "frozen" into inactive
+C<CV>.  Devel::Peek also supplies C<SvREFCNT()>, C<SvREFCNT_inc()>, and
+C<SvREFCNT_dec()> which can query, increment, and decrement reference
+counts on SVs.  This document will take a passive, and safe, approach
+to data debugging and for that it will describe only the C<Dump()>
+function.
 
 =head1 EXAMPLES
 
@@ -366,7 +368,7 @@ it has no prototype (C<PROTOTYPE> field is missing).
 
 =head1 EXPORTS
 
-C<Peek>, C<mstats> by default. Additionally available C<SvREFCNT>,
+C<Peek>, C<mstats>, C<DeadCode> by default. Additionally available C<SvREFCNT>,
 C<SvREFCNT_inc>, C<SvREFCNT_dec>.
 
 =head1 BUGS
@@ -388,15 +390,15 @@ require DynaLoader;
 # names by default without a very good reason. Use EXPORT_OK instead.
 # Do not simply export all your public functions/methods/constants.
 @EXPORT = qw(
-	Dump mstat
+	Dump mstat DeadCode
 );
 # Other items we are prepared to export if requested
 @EXPORT_OK = qw(
-		Dump SvREFCNT SvREFCNT_inc SvREFCNT_dec mstat
+		Dump SvREFCNT SvREFCNT_inc SvREFCNT_dec mstat DeadCode
 );
 %EXPORT_TAGS = ('ALL' => \@EXPORT_OK);
 
-$VERSION = $VERSION = 0.8;
+$VERSION = $VERSION = 0.81;
 
 bootstrap Devel::Peek;
 
