@@ -46,3 +46,7 @@
 	Prints the value of the hash of HV keys.
 	Changes by Gisle: do not print both if AvARRAY == AvALLOC;
 			  print hash fill statistics.
+0.89:
+	Changes by Gisle: optree dump.
+
+
