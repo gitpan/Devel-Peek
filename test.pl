@@ -20,6 +20,7 @@ my $sub = sub {'aaa'};
 $closure = sub {$sub};
 sub subr {1}
 sub closure {$sub}
+sub other::package {$sub}
 sub prototyped (&@) {'aha'}
 
 mstat("Point 1");
@@ -29,6 +30,7 @@ Dump($closure);
 Dump(\&subr);
 Dump(\&closure);
 Dump(\*closure);
+Dump(\&other::package);
 Dump(\&prototyped);
 Dump(\&Dump);
 Dump ($x, 10);

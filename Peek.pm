@@ -6,10 +6,10 @@ Devel::Peek - A data debugging tool for the XS programmer
 
 =head1 SYNOPSIS
 
-        use Devel::Peek 'Dump';
+        use Devel::Peek;
         Dump( $a );
         Dump( $a, 5 );
-	Devel::Peek::mstat "Point 5";
+	mstat "Point 5";
 
 =head1 DESCRIPTION
 
@@ -138,6 +138,11 @@ ROK is set we have an RV item rather than an IV or PV.  Notice that Dump
 follows the reference and shows us what C<$b> was referencing.  We see the
 same C<$a> that we found in the previous example.
 
+Note that the value of C<RV> coincides with the numbers we see when we
+stringify $b. The addresses inside RV() and IV() are addresses of
+C<X***> structure which holds the current state of an C<SV>. This
+address may change during lifetime of an SV.
+
 =head2 A reference to an array
 
 This shows what a reference to an array looks like.
@@ -163,7 +168,7 @@ The output:
           MAX = 0
           ARYLEN = 0x0
           FLAGS = (REAL)
-        Elt No. 0
+        Elt No. 0 0xb5658
         SV = IV(0xbe860)
           REFCNT = 1
           FLAGS = (IOK,pIOK)
@@ -198,12 +203,12 @@ The output:
           MAX = 0
           ARYLEN = 0x0
           FLAGS = (REAL)
-        Elt No. 0
+        Elt No. 0  0xb5658
         SV = IV(0xbe860)
           REFCNT = 1
           FLAGS = (IOK,pIOK)
           IV = 42
-        Elt No. 1
+        Elt No. 1  0xb5680
         SV = IV(0xbe818)
           REFCNT = 1
           FLAGS = (IOK,pIOK)
@@ -245,7 +250,7 @@ The output:
           IV = 42
 
 This shows C<$a> is a reference pointing to an SV.  That SV is a PVHV, a
-hash.
+hash. Fields RITER and EITER are used by C<L<each>>.
 
 =head2 Dumping a large array or hash
 
@@ -304,6 +309,66 @@ doesn't bless the object, might look something like this:
           NV = 0
           PV = 0
 
+=head2 A reference to a subroutine
+
+Looks like this:
+
+	SV = RV(0x798ec)
+	  REFCNT = 1
+	  FLAGS = (TEMP,ROK)
+	  RV = 0x1d453c
+	SV = PVCV(0x1c768c)
+	  REFCNT = 2
+	  FLAGS = ()
+	  IV = 0
+	  NV = 0
+	  COMP_STASH = 0x31068  "main"
+	  START = 0xb20e0
+	  ROOT = 0xbece0
+	  XSUB = 0x0
+	  XSUBANY = 0
+	  GVGV::GV = 0x1d44e8   "MY" :: "top_targets"
+	  FILEGV = 0x1fab74     "_<(eval 5)"
+	  DEPTH = 0
+	  PADLIST = 0x1c9338
+
+This shows that 
+
+=over
+
+=item
+
+the subroutine is not an XSUB (since C<START> and C<ROOT> are
+non-zero, and C<XSUB> is zero);
+
+=item
+
+that it was compiled in the package C<main>;
+
+=item
+
+under the name C<MY::top_targets>; 
+
+=item
+
+inside a 5th eval in the program;
+
+=item
+
+it is not currently executed (see C<DEPTH>);
+
+
+=item
+
+it has no prototype (C<PROTOTYPE> field is missing).
+
+=over
+
+=head1 EXPORTS
+
+C<Peek>, C<mstats> by default. Additionally available C<SvREFCNT>,
+C<SvREFCNT_inc>, C<SvREFCNT_dec>.
+
 =head1 BUGS
 
 Readers have been known to skip important parts of L<perlguts>, causing much
@@ -323,7 +388,7 @@ require DynaLoader;
 # names by default without a very good reason. Use EXPORT_OK instead.
 # Do not simply export all your public functions/methods/constants.
 @EXPORT = qw(
-	
+	Dump mstat
 );
 # Other items we are prepared to export if requested
 @EXPORT_OK = qw(
@@ -331,7 +396,7 @@ require DynaLoader;
 );
 %EXPORT_TAGS = ('ALL' => \@EXPORT_OK);
 
-$VERSION = $VERSION = 0.7;
+$VERSION = $VERSION = 0.8;
 
 bootstrap Devel::Peek;
 

@@ -22,6 +22,20 @@ static int loopDump;
 	  fprintf(file, "\n");				\
 	} } while (0)
 
+void
+fprintgg(FILE *file, char *name, GV *sv)
+{
+	fprintf(file, "%s = 0x%lx", name, (long)sv);
+	if (sv && GvNAME(sv)) {
+	  fprintf(file, "\t\"");
+	  if (GvSTASH(sv) && HvNAME(GvSTASH(sv))) {
+	    fprintf(file, "%s\" :: \"", HvNAME(GvSTASH(sv)));
+	  }
+	  fprintf(file, "%s\"\n", GvNAME(sv));
+	} else {
+	  fprintf(file, "\n");
+	}
+}
 
 void
 Dump(sv,lim)
@@ -90,9 +104,6 @@ I32 lim;
 #else
       if (GvMULTI(sv))         strcat(d, "MULTI,");
 #endif
-#ifdef OVERLOAD
-      if (flags & SVpgv_AM)	strcat(d, "withOVERLOAD,");
-#endif /* OVERLOAD */
     }
 
     d += strlen(d);
@@ -208,7 +219,7 @@ I32 lim;
 	       count++) {
 	    SV** elt = av_fetch((AV*)sv,count,0);
 
-	    fprintf(stderr, "Elt No. %ld\n", (long)count);
+	    fprintf(stderr, "Elt No. %ld  0x%lx\n", (long)count, *elt);
 	    if (elt) Dump(*elt,lim);
 	  }
 	  loopDump--;
@@ -247,12 +258,12 @@ I32 lim;
     case SVt_PVCV:
 	if (SvPOK(sv)) fprintf(stderr, "  PROTOTYPE = \"%s\"\n",
 			       SvPV(sv,na));
-	fprinth(stderr, "  STASH", CvSTASH(sv));
+	fprinth(stderr, "  COMP_STASH", CvSTASH(sv));
 	fprintf(stderr, "  START = 0x%lx\n", (long)CvSTART(sv));
 	fprintf(stderr, "  ROOT = 0x%lx\n", (long)CvROOT(sv));
 	fprintf(stderr, "  XSUB = 0x%lx\n", (long)CvXSUB(sv));
 	fprintf(stderr, "  XSUBANY = %ld\n", (long)CvXSUBANY(sv).any_i32);
-	fprintg(stderr, "  GV", CvGV(sv));
+	fprintgg(stderr, "  GVGV::GV", CvGV(sv));
 	fprintg(stderr, "  FILEGV", CvFILEGV(sv));
 	fprintf(stderr, "  DEPTH = %ld\n", (long)CvDEPTH(sv));
 	fprintf(stderr, "  PADLIST = 0x%lx\n", (long)CvPADLIST(sv));
@@ -302,7 +313,7 @@ I32 lim;
 #   define mstat(str) dump_mstats(str)
 #else
 #   define mstat(str) \
-	fprintf(stderr, "%s: perl not compiled with DEBUGGING_MSTATS\n",str);
+	fprintf(stderr. "%s: perl not compiled with DEBUGGING_MSTATS\n",str);
 #endif
 
 MODULE = Devel::Peek		PACKAGE = Devel::Peek

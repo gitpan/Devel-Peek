@@ -1,3 +1,11 @@
 0.7:
 	New function mstat added.
 	Docs added (thanks to Dean Roehrich).
+
+0.8:
+	Exports Dump and mstat.
+	Docs list more details.
+	Arrays print addresses of SV.
+	CV: STASH renamed to COMP_STASH. The package of GV is printed now.
+	Updated for newer overloading implementation (but will not report
+		packages with overloading).
