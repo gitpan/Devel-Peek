@@ -399,17 +399,23 @@ require DynaLoader;
 # names by default without a very good reason. Use EXPORT_OK instead.
 # Do not simply export all your public functions/methods/constants.
 @EXPORT = qw(
-	Dump mstat DeadCode DumpArray
+	Dump mstat DeadCode DumpArray DumpWithOP DumpProg
 );
 # Other items we are prepared to export if requested
 @EXPORT_OK = qw(
-		Dump SvREFCNT SvREFCNT_inc SvREFCNT_dec mstat DeadCode DumpArray
+		Dump SvREFCNT SvREFCNT_inc SvREFCNT_dec mstat DeadCode DumpArray DumpProg DumpWithOP
 );
 %EXPORT_TAGS = ('ALL' => \@EXPORT_OK);
 
-$VERSION = $VERSION = 0.89;
+$VERSION = $VERSION = 0.90;
 
 bootstrap Devel::Peek;
+
+sub DumpWithOP ($;$) {
+   local($Devel::Peek::dump_ops)=1;
+   my $depth = @_ > 1 ? $_[1] : 4 ;
+   Dump($_[0]);
+}
 
 # Preloaded methods go here.
 

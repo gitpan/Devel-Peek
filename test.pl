@@ -42,4 +42,6 @@ Dump($a);
 
 mstat("Point 2");
 
+DumpWithOP($closure);
+DumpProg;
 DeadCode;

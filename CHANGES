@@ -48,5 +48,8 @@
 			  print hash fill statistics.
 0.89:
 	Changes by Gisle: optree dump.
-
-
+0.90:
+	DumpWithOP, DumpProg exported.
+	Better indent for AV, HV elts.
+	Address of SV printed.
+	Corrected Zero code which was causing segfaults.

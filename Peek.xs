@@ -606,8 +606,8 @@ I32 lim;
     flags = SvFLAGS(sv);
     type = SvTYPE(sv);
 
-    sprintf(d, "(0x%lx)\n%*s  REFCNT = %ld\n%*s  FLAGS = (",
-	    (unsigned long)SvANY(sv), 2*level - 2, "", (long)SvREFCNT(sv),
+    sprintf(d, "(0x%lx) at 0x%lx\n%*s  REFCNT = %ld\n%*s  FLAGS = (",
+	    (unsigned long)SvANY(sv), (unsigned long)sv, 2*level - 2, "", (long)SvREFCNT(sv),
 	    2*level - 2, "");
     d += strlen(d);
     if (flags & SVs_PADBUSY)	strcat(d, "PADBUSY,");
@@ -817,8 +817,9 @@ I32 lim;
 	       count++) {
 	    SV** elt = av_fetch((AV*)sv,count,0);
 
-	    m_printf(level, PerlIO_stderr(), "Elt No. %ld  0x%lx\n", (long)count, *elt);
-	    if (elt) DumpLevel(level,*elt,lim);
+	    m_printf(level + 1, PerlIO_stderr(), "Elt No. %ld\n", (long)count);
+	    if (elt) 
+		DumpLevel(level + 1,*elt,lim);
 	  }
 	  loopDump--;
 	}
@@ -833,7 +834,7 @@ I32 lim;
 	    int max = 0;
 
 	    PerlIO_printf(PerlIO_stderr(), "  (");
-	    Zero(freq, sizeof(freq), char*);
+	    Zero(freq, FREQ_MAX + 1, int);
 	    for (i = 0; i <= HvMAX(sv); i++) {
 		HE* h; int count = 0;
                 for (h = HvARRAY(sv)[i]; h; h = HeNEXT(h))
@@ -877,11 +878,10 @@ I32 lim;
 
 	    key = hv_iterkey(he, &len);
 	    elt = hv_iterval(hv, he);
-	    m_printf(level, PerlIO_stderr(), "Elt ");
+	    m_printf(level + 1, PerlIO_stderr(), "Elt ");
             fprintpv(PerlIO_stderr(), key, len, 0);
-            PerlIO_printf(PerlIO_stderr(), " => 0x%lx, HASH = 0x%lx\n", 
-			  elt, hash);
-	    DumpLevel(level,elt,lim);
+            PerlIO_printf(PerlIO_stderr(), " HASH = 0x%lx\n", hash);
+	    DumpLevel(level + 1,elt,lim);
 	  }
 	  hv_iterinit(hv);		/* Return to status quo */
 	  loopDump--;
