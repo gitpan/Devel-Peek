@@ -1,12 +1,11 @@
 use ExtUtils::MakeMaker;
-# See lib/ExtUtils/MakeMaker.pm for details of how to influence
-# the contents of the Makefile that is written.
+@MM = ( NAME         => 'Devel::Peek',
+        VERSION_FROM => 'Peek.pm',
+        dist         => {COMPRESS=>'gzip -9f', SUFFIX=>'gz'},
+      );
 
-WriteMakefile(
-    'NAME'	=> 'Devel::Peek',
-    'VERSION_FROM'	=> 'Peek.pm',
-    'LIBS'	=> [''],   # e.g., '-lm' 
-    'DEFINE'	=> '',     # e.g., '-DHAVE_SOMETHING' 
-    'INC'	=> '',     # e.g., '-I/usr/include/other' 
-    'dist' => {COMPRESS=>'gzip -9f', SUFFIX=>'gz'},
-);
+if ($ExtUtils::MakeMaker::VERSION >= 5.4301) {
+    push @MM, CAPI => 'TRUE';
+}
+
+WriteMakefile(@MM);

@@ -50,11 +50,15 @@ m_printf(level,file,pat,va_alist)
 }
 
 static void
+#ifdef CAN_PROTOTYPE
+fprintgg(PerlIO *file, char *name, GV *sv, int level)
+#else
 fprintgg(file, name, sv, level)
     PerlIO *file;
     char *name;
     GV *sv;
     int level;
+#endif
 {
 	PerlIO_printf(file, "%*s%s = 0x%lx", level*2 - 2, "", name, (long)sv);
 	if (sv && GvNAME(sv)) {
@@ -70,11 +74,15 @@ fprintgg(file, name, sv, level)
 
 
 static void
+#ifdef CAN_PROTOTYPE
+fprintpv(PerlIO *file, char *pv, STRLEN cur, STRLEN len)
+#else
 fprintpv(file, pv, cur, len)
     PerlIO *file;
     char *pv;
     STRLEN cur;
     STRLEN len;
+#endif
 {
     SV  *pv_lim_sv = perl_get_sv("Devel::Peek::pv_limit", FALSE);
     STRLEN pv_lim = pv_lim_sv ? SvIV(pv_lim_sv) : 0;
@@ -130,7 +138,12 @@ fprintpv(file, pv, cur, len)
 
 
 char *
+#ifdef CAN_PROTOTYPE
 my_sv_peek(SV *sv)   /* stolen from sv.c */
+#else
+my_sv_peek(sv)
+    SV *sv;
+#endif
 {
     SV *t = sv_newmortal();
     STRLEN prevlen;
@@ -259,7 +272,11 @@ my_sv_peek(SV *sv)   /* stolen from sv.c */
 	    sv_catpvf(t, "(\"%.127s\")",SvPVX(sv));
     }
     else if (SvNOKp(sv)) {
+#if !defined(WIN32) || (PATCHLEVEL > 4) || (PATCHLEVEL == 4 && SUBVERSION > 4)
+	/* perl_set_numeric_standard() was erroneously NOT exported
+	   from Perl.DLL before 5.004_05 on Win32 */
 	SET_NUMERIC_STANDARD();
+#endif
 	sv_catpvf(t, "(%g)",SvNVX(sv));
     }
     else if (SvIOKp(sv))
@@ -276,20 +293,34 @@ my_sv_peek(SV *sv)   /* stolen from sv.c */
 }
 
 void
+#ifdef CAN_PROTOTYPE
 DumpOP(int level, OP* op)
+#else
+DumpOP(level, op)
+    int level;
+    OP* op;
+#endif
 {
     SV *tmpsv;
+#ifdef PERL_CAPI
+#   undef  op_name
+#   undef  op_desc
+
+    char** op_name = get_op_names();
+    char** op_desc = get_op_descs();
+#endif
+
     m_printf(level, PerlIO_stderr(), "OP_", op);
     if (op->op_type == OP_NULL) {
-        PerlIO_printf(PerlIO_stderr(), "NULL (%s)", op_name[op->op_targ]);
+        PerlIO_printf(PerlIO_stderr(), "NULL (%s)", PL_op_name[op->op_targ]);
     } else {
-        char *c = op_name[op->op_type];
+        char *c = PL_op_name[op->op_type];
         for (; *c; c++)
             PerlIO_putc(PerlIO_stderr(), toUPPER(*c));
         if (op->op_seq)
             PerlIO_printf(PerlIO_stderr(), " %d", op->op_seq);
-        if (0 && !strEQ(op_name[op->op_type], op_desc[op->op_type]))
-	    PerlIO_printf(PerlIO_stderr(), " (%s)", op_desc[op->op_type]);
+        if (0 && !strEQ(PL_op_name[op->op_type], PL_op_desc[op->op_type]))
+	    PerlIO_printf(PerlIO_stderr(), " (%s)", PL_op_desc[op->op_type]);
     }
     switch (op->op_type) {
     case OP_GVSV:
@@ -418,7 +449,7 @@ DumpOP(int level, OP* op)
         PMOP *pm = ((PMOP*)op);
         /*XXX might want to dump other PMOP fields here */ 
         if (pm->op_pmflags
-#ifndef PMf_USED  /* 5.005 */
+#if PATCHLEVEL > 4  /* 5.005 */
            || (pm->op_pmregexp && pm->op_pmregexp->check_substr)
 #endif
           )
@@ -489,45 +520,82 @@ DumpOP(int level, OP* op)
     }
 }
 
+#ifndef VTBL_sv
+#  define VTBL_sv		&PL_vtbl_sv
+#  define VTBL_env		&PL_vtbl_env
+#  define VTBL_envelem		&PL_vtbl_envelem
+#  define VTBL_sig		&PL_vtbl_sig
+#  define VTBL_sigelem		&PL_vtbl_sigelem
+#  define VTBL_pack		&PL_vtbl_pack
+#  define VTBL_packelem		&PL_vtbl_packelem
+#  define VTBL_dbline		&PL_vtbl_dbline
+#  define VTBL_isa		&PL_vtbl_isa
+#  define VTBL_isaelem		&PL_vtbl_isaelem
+#  define VTBL_arylen		&PL_vtbl_arylen
+#  define VTBL_glob		&PL_vtbl_glob
+#  define VTBL_mglob		&PL_vtbl_mglob
+#  define VTBL_nkeys		&PL_vtbl_nkeys
+#  define VTBL_taint		&PL_vtbl_taint
+#  define VTBL_substr		&PL_vtbl_substr
+#  define VTBL_vec		&PL_vtbl_vec
+#  define VTBL_pos		&PL_vtbl_pos
+#  define VTBL_bm		&PL_vtbl_bm
+#  define VTBL_fm		&PL_vtbl_fm
+#  define VTBL_uvar		&PL_vtbl_uvar
+#  define VTBL_defelem		&PL_vtbl_defelem
+#  define VTBL_regexp		&PL_vtbl_regexp
+#  ifdef USE_LOCALE_COLLATE
+#    define VTBL_collxfrm	&PL_vtbl_collxfrm
+#  endif
+#  ifdef OVERLOAD
+#    define VTBL_amagic		&PL_vtbl_amagic
+#    define VTBL_amagicelem	&PL_vtbl_amagicelem
+#  endif
+#endif
+
 void
-DumpMagic(level,mg,lim)
-I32 level;
-MAGIC *mg;
-I32 lim;
+#ifdef CAN_PROTOTYPE
+DumpMagic(I32 level, MAGIC *mg, I32 lim)
+#else
+DumpMagic(level, mg, lim)
+    I32 level;
+    MAGIC *mg;
+    I32 lim;
+#endif
 {
     for (; mg; mg = mg->mg_moremagic) {
  	m_printf(level, PerlIO_stderr(), "  MAGIC = 0x%lx\n", (long)mg);
  	if (mg->mg_virtual) {
             MGVTBL *v = mg->mg_virtual;
  	    char *s = 0;
- 	    if      (v == &vtbl_sv)         s = "sv";
-            else if (v == &vtbl_env)        s = "env";
-            else if (v == &vtbl_envelem)    s = "envelem";
-            else if (v == &vtbl_sig)        s = "sig";
-            else if (v == &vtbl_sigelem)    s = "sigelem";
-            else if (v == &vtbl_pack)       s = "pack";
-            else if (v == &vtbl_packelem)   s = "packelem";
-            else if (v == &vtbl_dbline)     s = "dbline";
-            else if (v == &vtbl_isa)        s = "isa";
-            else if (v == &vtbl_arylen)     s = "arylen";
-            else if (v == &vtbl_glob)       s = "glob";
-            else if (v == &vtbl_mglob)      s = "mglob";
-            else if (v == &vtbl_nkeys)      s = "nkeys";
-            else if (v == &vtbl_taint)      s = "taint";
-            else if (v == &vtbl_substr)     s = "substr";
-            else if (v == &vtbl_vec)        s = "vec";
-            else if (v == &vtbl_pos)        s = "pos";
-            else if (v == &vtbl_bm)         s = "bm";
-            else if (v == &vtbl_fm)         s = "fm";
-            else if (v == &vtbl_uvar)       s = "uvar";
-            else if (v == &vtbl_defelem)    s = "defelem";
-#ifdef USE_LOCALE_COLLATE
-	    else if (v == &vtbl_collxfrm)   s = "collxfrm";
-#endif
-#ifdef OVERLOAD
-	    else if (v == &vtbl_amagic)     s = "amagic";
-	    else if (v == &vtbl_amagicelem) s = "amagicelem";
-#endif
+ 	    if      (v == VTBL_sv)         s = "sv";
+            else if (v == VTBL_env)        s = "env";
+            else if (v == VTBL_envelem)    s = "envelem";
+            else if (v == VTBL_sig)        s = "sig";
+            else if (v == VTBL_sigelem)    s = "sigelem";
+            else if (v == VTBL_pack)       s = "pack";
+            else if (v == VTBL_packelem)   s = "packelem";
+            else if (v == VTBL_dbline)     s = "dbline";
+            else if (v == VTBL_isa)        s = "isa";
+            else if (v == VTBL_arylen)     s = "arylen";
+            else if (v == VTBL_glob)       s = "glob";
+            else if (v == VTBL_mglob)      s = "mglob";
+            else if (v == VTBL_nkeys)      s = "nkeys";
+            else if (v == VTBL_taint)      s = "taint";
+            else if (v == VTBL_substr)     s = "substr";
+            else if (v == VTBL_vec)        s = "vec";
+            else if (v == VTBL_pos)        s = "pos";
+            else if (v == VTBL_bm)         s = "bm";
+            else if (v == VTBL_fm)         s = "fm";
+            else if (v == VTBL_uvar)       s = "uvar";
+            else if (v == VTBL_defelem)    s = "defelem";
+ #ifdef USE_LOCALE_COLLATE
+	    else if (v == VTBL_collxfrm)   s = "collxfrm";
+ #endif
+ #ifdef OVERLOAD
+	    else if (v == VTBL_amagic)     s = "amagic";
+	    else if (v == VTBL_amagicelem) s = "amagicelem";
+ #endif	    
 	    if (s) {
 	        m_printf(level, PerlIO_stderr(), "    MG_VIRTUAL = &vtbl_%s\n", s);
 	    } else {
@@ -588,18 +656,26 @@ I32 lim;
 }
 
 void
-Dump(sv,lim)
-SV *sv;
-I32 lim;
+#ifdef CAN_PROTOTYPE
+Dump(SV *sv, I32 lim)
+#else
+Dump(sv, lim)
+    SV *sv;
+    I32 lim;
+#endif
 {
     DumpLevel(0,sv,lim);
 }
 
 void
-DumpLevel(level,sv,lim)
-I32 level;
-SV *sv;
-I32 lim;
+#ifdef CAN_PROTOTYPE
+DumpLevel(I32 level, SV *sv, I32 lim)
+#else
+DumpLevel(level, sv, lim)
+    I32 level;
+    SV *sv;
+    I32 lim;
+#endif
 {
     char tmpbuf[1024];
     char *d = tmpbuf;
