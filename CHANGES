@@ -41,3 +41,8 @@
 	Extra indentation of SvRV.
 	AMAGIC removed.
 	Head of OOK data printed too.
+0.88:
+	PADLIST and OUTSIDE of CVs itemized.
+	Prints the value of the hash of HV keys.
+	Changes by Gisle: do not print both if AvARRAY == AvALLOC;
+			  print hash fill statistics.

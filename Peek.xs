@@ -434,8 +434,13 @@ I32 lim;
 	DumpLevel(level, LvTARG(sv),lim);
 	break;
     case SVt_PVAV:
-	m_printf(level, PerlIO_stderr(), "  ARRAY = 0x%lx\n", (long)AvARRAY(sv));
-	m_printf(level, PerlIO_stderr(), "  ALLOC = 0x%lx\n", (long)AvALLOC(sv));
+	m_printf(level, PerlIO_stderr(), "  ARRAY = 0x%lx", (long)AvARRAY(sv));
+	if (AvARRAY(sv) != AvALLOC(sv)) {
+	    PerlIO_printf(PerlIO_stderr(), " (offset=%d)\n",
+	                  (AvARRAY(sv) - AvALLOC(sv)));
+	    m_printf(level, PerlIO_stderr(), "  ALLOC = 0x%lx\n", (long)AvALLOC(sv));
+	} else
+	    PerlIO_putc(PerlIO_stderr(), '\n');
 	m_printf(level, PerlIO_stderr(), "  FILL = %ld\n", (long)AvFILL(sv));
 	m_printf(level, PerlIO_stderr(), "  MAX = %ld\n", (long)AvMAX(sv));
 	m_printf(level, PerlIO_stderr(), "  ARYLEN = 0x%lx\n", (long)AvARYLEN(sv));
@@ -461,7 +466,35 @@ I32 lim;
 	}
 	break;
     case SVt_PVHV:
-	m_printf(level, PerlIO_stderr(), "  ARRAY = 0x%lx\n",(long)HvARRAY(sv));
+	m_printf(level, PerlIO_stderr(), "  ARRAY = 0x%lx",(long)HvARRAY(sv));
+	if (HvARRAY(sv)) {
+	    /* Show distribution of HEs in the ARRAY */
+	    int freq[10];
+#define FREQ_MAX (sizeof freq / sizeof freq[0] - 1)
+	    int i;
+	    int max = 0;
+
+	    PerlIO_printf(PerlIO_stderr(), "  (");
+	    Zero(freq, sizeof(freq), char*);
+	    for (i = 0; i <= HvMAX(sv); i++) {
+		HE* h; int count = 0;
+                for (h = HvARRAY(sv)[i]; h; h = HeNEXT(h))
+		    count++;
+		if (count > FREQ_MAX) count = FREQ_MAX;
+	        freq[count]++;
+	        if (max < count) max = count;
+	    }
+	    for (i = 0; i <= max; i++) {
+		PerlIO_printf(PerlIO_stderr(), "%d%s:%d",
+					       i,
+				               (i == FREQ_MAX) ? "+" : "",
+                                               freq[i]);
+		if (i != max)
+		    PerlIO_printf(PerlIO_stderr(), ", ");
+            }
+	    PerlIO_putc(PerlIO_stderr(), ')');
+	}
+	PerlIO_putc(PerlIO_stderr(), '\n');
 	m_printf(level, PerlIO_stderr(), "  KEYS = %ld\n", (long)HvKEYS(sv));
 	m_printf(level, PerlIO_stderr(), "  FILL = %ld\n", (long)HvFILL(sv));
 	m_printf(level, PerlIO_stderr(), "  MAX = %ld\n", (long)HvMAX(sv));
@@ -475,16 +508,21 @@ I32 lim;
 	  HE *he;
 	  HV *hv = (HV*)sv;
 	  int count = lim - loopDump;
-	  I32 len;
-	  SV *elt;
-	  char *key;
 
 	  loopDump--;
 	  hv_iterinit(hv);
-	  while ((elt = hv_iternextsv(hv,&key,&len)) && count--) {
+	  while ((he = hv_iternext(hv)) && count--) {
+	    SV *elt;
+	    char *key;
+	    I32 len;
+	    U32 hash = HeHASH(he);
+
+	    key = hv_iterkey(he, &len);
+	    elt = hv_iterval(hv, he);
 	    m_printf(level, PerlIO_stderr(), "Elt ");
             fprintpv(PerlIO_stderr(), key, len, 0);
-            PerlIO_printf(PerlIO_stderr(), " => 0x%lx\n", elt);
+            PerlIO_printf(PerlIO_stderr(), " => 0x%lx, HASH = 0x%lx\n", 
+			  elt, hash);
 	    DumpLevel(level,elt,lim);
 	  }
 	  hv_iterinit(hv);		/* Return to status quo */
@@ -503,8 +541,6 @@ I32 lim;
 	fprintgg(PerlIO_stderr(), "  GVGV::GV", CvGV(sv), level);
 	fprintg(PerlIO_stderr(), "  FILEGV", CvFILEGV(sv));
 	m_printf(level, PerlIO_stderr(), "  DEPTH = %ld\n", (long)CvDEPTH(sv));
-	m_printf(level, PerlIO_stderr(), "  PADLIST = 0x%lx\n", (long)CvPADLIST(sv));
-	m_printf(level, PerlIO_stderr(), "  OUTSIDE = 0x%lx\n", (long)CvOUTSIDE(sv));
 #ifdef USE_THREADS
 	m_printf(level, PerlIO_stderr(), "  MUTEXP = 0x%lx\n", (long)CvMUTEXP(sv));
 	m_printf(level, PerlIO_stderr(), "  OWNER = 0x%lx\n", (long)CvOWNER(sv));
@@ -513,6 +549,42 @@ I32 lim;
 		      (unsigned long)CvFLAGS(sv));
 	if (type == SVt_PVFM)
 	    m_printf(level, PerlIO_stderr(), "  LINES = %ld\n", (long)FmLINES(sv));
+	m_printf(level, PerlIO_stderr(), "  PADLIST = 0x%lx\n", (long)CvPADLIST(sv));
+	if (loopDump < lim && CvPADLIST(sv)) {
+	    AV* padlist = CvPADLIST(sv);
+	    AV* pad_name = (AV*)*av_fetch(padlist, 0, FALSE);
+	    AV* pad = (AV*)*av_fetch(padlist, 1, FALSE);
+	    SV** pname = AvARRAY(pad_name);
+	    SV** ppad = AvARRAY(pad);
+	    I32 ix;
+
+	    for (ix = 1; ix <= AvFILL(pad_name); ix++) {
+		if (SvPOK(pname[ix]))
+		    m_printf(level, /* %5d below is enough whitespace. */
+			     PerlIO_stderr(), 
+			     "%5d. 0x%lx (%s\"%s\" %ld-%ld)\n",
+			     ix, ppad[ix],
+			     SvFAKE(pname[ix]) ? "FAKE " : "",
+			     SvPVX(pname[ix]),
+			     (long)I_32(SvNVX(pname[ix])),
+			     (long)SvIVX(pname[ix]));
+	    }
+	}
+	{
+	    CV *outside = CvOUTSIDE(sv);
+	    m_printf(level, PerlIO_stderr(), "  OUTSIDE = 0x%lx (%s)\n", 
+		     (long)outside, 
+		     (!outside ? "null"
+		      : CvANON(outside) ? "ANON"
+		      : (outside == main_cv) ? "MAIN"
+		      : CvUNIQUE(outside) ? "UNIQUE"
+		      : CvGV(outside) ? GvNAME(CvGV(outside)) : "UNDEFINED"));
+	}
+	if (loopDump < lim && (CvCLONE(sv) || CvCLONED(sv))) {
+	  loopDump++;
+	  DumpLevel(level + 1, (SV*)CvOUTSIDE(sv),lim); /* Indent wrt OUTSIDE = . */
+	  loopDump--;
+	}
 	break;
     case SVt_PVGV:
 	m_printf(level, PerlIO_stderr(), "  NAME = \"%s\"\n", GvNAME(sv));
@@ -641,7 +713,7 @@ DeadCode()
 				/* Dump(pad[j],4); */
 			}
 		    }
-		    PerlIO_printf(PerlIO_stderr(), "    level %i: refs: %i, strings: %i in %i,\n        argsarray: %i, argsstrings: %i\n", 
+		    PerlIO_printf(PerlIO_stderr(), "    level %i: refs: %i, strings: %i in %i,\targsarray: %i, argsstrings: %i\n", 
 			    i, levelref, levelm, levels, levela, levelas);
 		    totm += levelm;
 		    tota += levela;
@@ -651,7 +723,7 @@ DeadCode()
 		    if (dumpit) DumpLevel(0,(SV*)cv,2);
 		}
 		if (AvFILL(padlist) > 1) {
-		    PerlIO_printf(PerlIO_stderr(), "  total: refs: %i, strings: %i in %i\n        argsarrays: %i, argsstrings: %i\n", 
+		    PerlIO_printf(PerlIO_stderr(), "  total: refs: %i, strings: %i in %i,\targsarrays: %i, argsstrings: %i\n", 
 			    totref, totm, tots, tota, totas);
 		}
 		tref += totref;
@@ -662,7 +734,7 @@ DeadCode()
 	    }
 	}
     }
-    PerlIO_printf(PerlIO_stderr(), "total: refs: %i, strings: %i in %i\nargsarray: %i, argsstrings: %i\n", tref, tm, ts, ta, tas);
+    PerlIO_printf(PerlIO_stderr(), "total: refs: %i, strings: %i in %i\targsarray: %i, argsstrings: %i\n", tref, tm, ts, ta, tas);
 
     return ret;
 }
