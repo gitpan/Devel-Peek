@@ -496,7 +496,7 @@ MAGIC *mg;
 I32 lim;
 {
     for (; mg; mg = mg->mg_moremagic) {
- 	m_printf(level, PerlIO_stderr(), "  MAGIC = %p\n", mg);
+ 	m_printf(level, PerlIO_stderr(), "  MAGIC = 0x%lx\n", (long)mg);
  	if (mg->mg_virtual) {
             MGVTBL *v = mg->mg_virtual;
  	    char *s = 0;
@@ -531,7 +531,7 @@ I32 lim;
 	    if (s) {
 	        m_printf(level, PerlIO_stderr(), "    MG_VIRTUAL = &vtbl_%s\n", s);
 	    } else {
-	        m_printf(level, PerlIO_stderr(), "    MG_VIRTUAL = %p\n", v);
+	        m_printf(level, PerlIO_stderr(), "    MG_VIRTUAL = 0x%lx\n", (long)v);
             }
         } else {
 	   m_printf(level, PerlIO_stderr(), "    MG_VIRTUAL = 0\n");
@@ -559,23 +559,31 @@ I32 lim;
 	    }
         }
 	if (mg->mg_obj) {
-	    m_printf(level, PerlIO_stderr(), "    MG_OBJ = %p\n", mg->mg_obj);
+	    m_printf(level, PerlIO_stderr(), "    MG_OBJ = 0x%lx\n", (long)mg->mg_obj);
 	    if (mg->mg_flags & MGf_REFCOUNTED) {
 	       loopDump++;
 	       DumpLevel(level+2, mg->mg_obj, lim); /* MG is already +1 */
                loopDump--;
             }
 	}
-        if (mg->mg_ptr) {
-	    m_printf(level, PerlIO_stderr(), "    MG_PTR = %p", mg->mg_ptr);
-	    if (mg->mg_len) {
-                PerlIO_putc(PerlIO_stderr(), ' ');
-                fprintpv(PerlIO_stderr(), mg->mg_ptr, mg->mg_len, 0);
-            }
-            PerlIO_putc(PerlIO_stderr(), '\n');
-        }
         if (mg->mg_len)
 	    m_printf(level, PerlIO_stderr(), "    MG_LEN = %d\n", mg->mg_len);
+        if (mg->mg_ptr) {
+	    m_printf(level, PerlIO_stderr(), "    MG_PTR = 0x%lx", (long)mg->mg_ptr);
+	    if (mg->mg_len >= 0) {
+                PerlIO_putc(PerlIO_stderr(), ' ');
+                fprintpv(PerlIO_stderr(), mg->mg_ptr, mg->mg_len, 0);
+            } else if (mg->mg_len == HEf_SVKEY) {
+		PerlIO_puts(PerlIO_stderr(), " => HEf_SVKEY\n");
+		loopDump++;
+		DumpLevel(level+2, (SV*)((mg)->mg_ptr), lim); /* MG is already +1 */
+		loopDump--;
+		continue;
+	    } else {
+		PerlIO_puts(PerlIO_stderr(), " ???? - please notify IZ");
+	    }
+            PerlIO_putc(PerlIO_stderr(), '\n');
+        }
     }
 }
 
@@ -1112,7 +1120,7 @@ DeadCode()
 }
 #endif /* !PURIFY */
 
-#if defined(DEBUGGING_MSTATS) || (defined(MYMALLOC) && defined(USE_DEBUGGING_MSTATS))
+#if defined(PERL_DEBUGGING_MSTATS)
 #   define mstat(str) dump_mstats(str)
 #else
 #   define mstat(str) \

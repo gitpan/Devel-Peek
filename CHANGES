@@ -58,3 +58,5 @@
 	Update DEBUGGING_MSTATS-less MSTATS.
 0.92:
 	Should compile without MYMALLOC too.
+0.94:
+	Had problems with HEf_SVKEY magic.
