@@ -21,10 +21,17 @@ $closure = sub {$sub};
 sub subr {1}
 sub closure {$sub}
 sub prototyped (&@) {'aha'}
+
+mstat("Point 1");
+
 Dump($sub);
 Dump($closure);
 Dump(\&subr);
 Dump(\&closure);
 Dump(\*closure);
 Dump(\&prototyped);
+Dump(\&Dump);
 Dump ($x, 10);
+
+mstat("Point 2");
+

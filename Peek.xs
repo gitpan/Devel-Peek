@@ -7,6 +7,21 @@
 static int loopDump;
 
 #define DBL_DIG	15   /* A guess that works lots of places */
+#define fprintg(file,name,sv)	do {			\
+	fprintf(file, "%s = 0x%lx", name, (long)sv);	\
+	if (sv && GvNAME(sv)) {				\
+	  fprintf(file, "\t\"%s\"\n", GvNAME(sv));	\
+	} else {					\
+	  fprintf(file, "\n");				\
+	} } while (0)
+#define fprinth(file,name,sv)	do {			\
+	fprintf(file, "%s = 0x%lx", name, (long)sv);	\
+	if (sv && HvNAME(sv)) {				\
+	  fprintf(file, "\t\"%s\"\n", HvNAME(sv));	\
+	} else {					\
+	  fprintf(file, "\n");				\
+	} } while (0)
+
 
 void
 Dump(sv,lim)
@@ -59,12 +74,22 @@ I32 lim;
 
     switch (type) {
     case SVt_PVCV:
+#ifdef SVpcv_ANON
       if (flags & SVpcv_ANON)	strcat(d, "ANON,");
       if (flags & SVpcv_CLONE)	strcat(d, "CLONE,");
       if (flags & SVpcv_CLONED)	strcat(d, "CLONED,");
+#else
+      if (CvANON(sv))	strcat(d, "ANON,");
+      if (CvCLONE(sv))	strcat(d, "CLONE,");
+      if (CvCLONED(sv))	strcat(d, "CLONED,");
+#endif 
       break;
     case SVt_PVGV:
-      if (flags & SVpgv_MULTI)	strcat(d, "MULTI,");
+#ifdef SVpgv_MULTI
+      if (flags & SVpgv_MULTI) strcat(d, "MULTI,");
+#else
+      if (GvMULTI(sv))         strcat(d, "MULTI,");
+#endif
 #ifdef OVERLOAD
       if (flags & SVpgv_AM)	strcat(d, "withOVERLOAD,");
 #endif /* OVERLOAD */
@@ -157,7 +182,7 @@ I32 lim;
 	    fprintf(stderr, "  MAGIC = 0x%lx\n", (long)SvMAGIC(sv));
 	}
 	if (SvSTASH(sv))
-	    fprintf(stderr, "  STASH = \"%s\"\n", HvNAME(SvSTASH(sv)));
+	    fprinth(stderr, "  STASH", SvSTASH(sv));
     }
     switch (type) {
     case SVt_PVLV:
@@ -220,19 +245,15 @@ I32 lim;
 	break;
     case SVt_PVFM:
     case SVt_PVCV:
-	if (SvPOK(sv)) fprintf(stderr, "  PROTOTYPE = \"%s\"\n", SvPV(sv,na));
-	fprintf(stderr, "  STASH = \"%s\"\n", HvNAME(CvSTASH(sv)));
+	if (SvPOK(sv)) fprintf(stderr, "  PROTOTYPE = \"%s\"\n",
+			       SvPV(sv,na));
+	fprinth(stderr, "  STASH", CvSTASH(sv));
 	fprintf(stderr, "  START = 0x%lx\n", (long)CvSTART(sv));
 	fprintf(stderr, "  ROOT = 0x%lx\n", (long)CvROOT(sv));
 	fprintf(stderr, "  XSUB = 0x%lx\n", (long)CvXSUB(sv));
 	fprintf(stderr, "  XSUBANY = %ld\n", (long)CvXSUBANY(sv).any_i32);
-	fprintf(stderr, "  GV = 0x%lx", (long)CvGV(sv));
-	if (CvGV(sv) && GvNAME(CvGV(sv))) {
-	  fprintf(stderr, "  \"%s\"\n", GvNAME(CvGV(sv)));
-	} else {
-	  fprintf(stderr, "\n");
-	}
-	fprintf(stderr, "  FILEGV = 0x%lx\n", (long)CvFILEGV(sv));
+	fprintg(stderr, "  GV", CvGV(sv));
+	fprintg(stderr, "  FILEGV", CvFILEGV(sv));
 	fprintf(stderr, "  DEPTH = %ld\n", (long)CvDEPTH(sv));
 	fprintf(stderr, "  PADLIST = 0x%lx\n", (long)CvPADLIST(sv));
 	if (type == SVt_PVFM)
@@ -241,7 +262,7 @@ I32 lim;
     case SVt_PVGV:
 	fprintf(stderr, "  NAME = \"%s\"\n", GvNAME(sv));
 	fprintf(stderr, "  NAMELEN = %ld\n", (long)GvNAMELEN(sv));
-	fprintf(stderr, "  STASH = \"%s\"\n", HvNAME(GvSTASH(sv)));
+	fprinth(stderr, "  STASH", GvSTASH(sv));
 	fprintf(stderr, "  GP = 0x%lx\n", (long)GvGP(sv));
 	fprintf(stderr, "    SV = 0x%lx\n", (long)GvSV(sv));
 	fprintf(stderr, "    REFCNT = %ld\n", (long)GvREFCNT(sv));
@@ -254,8 +275,7 @@ I32 lim;
 	fprintf(stderr, "    LASTEXPR = %ld\n", (long)GvLASTEXPR(sv));
 	fprintf(stderr, "    LINE = %ld\n", (long)GvLINE(sv));
 	fprintf(stderr, "    FLAGS = 0x%x\n", (int)GvFLAGS(sv));
-	fprintf(stderr, "    STASH = \"%s\"\n", HvNAME(GvSTASH(sv)));
-	fprintf(stderr, "    EGV = 0x%lx\n", (long)GvEGV(sv));
+	fprintg(stderr, "    EGV", GvEGV(sv));
 	break;
     case SVt_PVIO:
 	fprintf(stderr, "  IFP = 0x%lx\n", (long)IoIFP(sv));
@@ -266,11 +286,11 @@ I32 lim;
 	fprintf(stderr, "  PAGE_LEN = %ld\n", (long)IoPAGE_LEN(sv));
 	fprintf(stderr, "  LINES_LEFT = %ld\n", (long)IoLINES_LEFT(sv));
 	fprintf(stderr, "  TOP_NAME = \"%s\"\n", IoTOP_NAME(sv));
-	fprintf(stderr, "  TOP_GV = 0x%lx\n", (long)IoTOP_GV(sv));
+	fprintg(stderr, "  TOP_GV", IoTOP_GV(sv));
 	fprintf(stderr, "  FMT_NAME = \"%s\"\n", IoFMT_NAME(sv));
-	fprintf(stderr, "  FMT_GV = 0x%lx\n", (long)IoFMT_GV(sv));
+	fprintg(stderr, "  FMT_GV", IoFMT_GV(sv));
 	fprintf(stderr, "  BOTTOM_NAME = \"%s\"\n", IoBOTTOM_NAME(sv));
-	fprintf(stderr, "  BOTTOM_GV = 0x%lx\n", (long)IoBOTTOM_GV(sv));
+	fprintg(stderr, "  BOTTOM_GV", IoBOTTOM_GV(sv));
 	fprintf(stderr, "  SUBPROCESS = %ld\n", (long)IoSUBPROCESS(sv));
 	fprintf(stderr, "  TYPE = %c\n", IoTYPE(sv));
 	fprintf(stderr, "  FLAGS = 0x%lx\n", (long)IoFLAGS(sv));
@@ -278,7 +298,18 @@ I32 lim;
     }
 }
 
+#ifdef DEBUGGING_MSTATS
+#   define mstat(str) dump_mstats(str)
+#else
+#   define mstat(str) \
+	fprintf(stderr, "%s: perl not compiled with DEBUGGING_MSTATS\n",str);
+#endif
+
 MODULE = Devel::Peek		PACKAGE = Devel::Peek
+
+void
+mstat(str="Devel::Peek::mstat: ")
+char *str
 
 void
 Dump(sv,lim=4)
