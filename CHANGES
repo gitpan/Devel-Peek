@@ -26,3 +26,6 @@
 	When calculating junk inside subs, divide by refcount.
 0.84:
 	Indented output.
+0.85:
+	By Gisle Aas: format SvPVX, print magic (but not unrefcounted mg_obj);
+	A lot of new fields stolen from sv_dump();

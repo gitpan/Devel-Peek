@@ -25,6 +25,7 @@ sub prototyped (&@) {'aha'}
 
 mstat("Point 1");
 
+Dump(*subr);
 Dump($sub);
 Dump($closure);
 Dump(\&subr);
