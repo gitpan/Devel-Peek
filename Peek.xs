@@ -1112,7 +1112,7 @@ DeadCode()
 }
 #endif /* !PURIFY */
 
-#if defined(DEBUGGING_MSTATS) || defined(USE_DEBUGGING_MSTATS)
+#if defined(DEBUGGING_MSTATS) || (defined(MYMALLOC) && defined(USE_DEBUGGING_MSTATS))
 #   define mstat(str) dump_mstats(str)
 #else
 #   define mstat(str) \

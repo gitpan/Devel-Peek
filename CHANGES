@@ -56,3 +56,5 @@
 0.91:
 	Compiles, runs test under 5.005beta2.
 	Update DEBUGGING_MSTATS-less MSTATS.
+0.92:
+	Should compile without MYMALLOC too.
