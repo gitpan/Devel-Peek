@@ -24,3 +24,5 @@
 	DumpArray added.
 	Compatible with PerlIO.
 	When calculating junk inside subs, divide by refcount.
+0.84:
+	Indented output.

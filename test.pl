@@ -2,7 +2,7 @@
 
 use Devel::Peek qw(:ALL);
 
-$x = [0, 1, {'two' => 22, 2 => 222}, [3, "three"]];
+$x = [0, 1, {'two' => 22, 2 => 222}, [3, "three", [3,3,3], { three => 'iii'}]];
 
 Dump $x;
 print STDERR "Refcount of \$x is ", SvREFCNT($x), "\n";
