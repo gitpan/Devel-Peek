@@ -398,7 +398,7 @@ require DynaLoader;
 );
 %EXPORT_TAGS = ('ALL' => \@EXPORT_OK);
 
-$VERSION = $VERSION = 0.81;
+$VERSION = $VERSION = 0.82;
 
 bootstrap Devel::Peek;
 

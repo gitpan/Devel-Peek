@@ -355,6 +355,10 @@ DeadCode()
 		    
 		    pad = AvARRAY((AV*)svp[i]);
 		    argav = (AV*)pad[0];
+		    if (!argav || (SV*)argav == &sv_undef) {
+			fprintf(stderr, "    closure-template\n");
+			continue;
+		    }
 		    args = AvARRAY(argav);
 		    levelm = levels = levelref = levelas = 0;
 		    levela = sizeof(SV*) * (AvMAX(argav) + 1);

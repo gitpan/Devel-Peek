@@ -12,3 +12,5 @@
 0.81:
 	Implements and exports DeadCode().
 	Buglet in the definition of mstat for malloc-less perl corrected.
+0.82:
+	New style PADless CV allowed.
