@@ -64,3 +64,5 @@
 	Added "hash quality" output to estimate Perl's hash functions.
 0.95_01:
 	Support for 5.005_53 and CAPI.
+0.96:
+	Support for 5.005_03 restored (including mstat).

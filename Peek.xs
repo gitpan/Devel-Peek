@@ -292,6 +292,11 @@ my_sv_peek(sv)
     return SvPV(t, na);
 }
 
+#ifdef VTBL_sv
+#  define PL_op_name	op_name
+#  define PL_op_desc	op_desc
+#endif	/* defined VTBL_sv */
+
 void
 #ifdef CAN_PROTOTYPE
 DumpOP(int level, OP* op)
@@ -1212,7 +1217,8 @@ DeadCode()
 }
 #endif /* !PURIFY */
 
-#if defined(PERL_DEBUGGING_MSTATS)
+#if defined(PERL_DEBUGGING_MSTATS) || defined(DEBUGGING_MSTATS) \
+	|| (defined(MYMALLOC) && !defined(PLAIN_MALLOC))
 #   define mstat(str) dump_mstats(str)
 #else
 #   define mstat(str) \
