@@ -271,9 +271,6 @@ I32 lim;
     if (flags & SVf_READONLY)	strcat(d, "READONLY,");
     d += strlen(d);
 
-#ifdef OVERLOAD
-    if (flags & SVf_AMAGIC)	strcat(d, "OVERLOAD,");
-#endif /* OVERLOAD */
     if (flags & SVp_IOK)	strcat(d, "pIOK,");
     if (flags & SVp_NOK)	strcat(d, "pNOK,");
     if (flags & SVp_POK)	strcat(d, "pPOK,");
@@ -400,7 +397,7 @@ I32 lim;
 	m_printf(level, PerlIO_stderr(), "  RV = 0x%lx\n", (long)SvRV(sv));
 	if (loopDump < lim) {
 	  loopDump++;
-	  DumpLevel(level, SvRV(sv),lim);
+	  DumpLevel(level + 1, SvRV(sv),lim); /* Indent wrt RV = .  */
 	  loopDump--;
 	}
 	return;
@@ -410,6 +407,11 @@ I32 lim;
     if (type <= SVt_PVLV) {
 	if (SvPVX(sv)) {
 	    m_printf(level, PerlIO_stderr(),"  PV = 0x%lx ", (long)SvPVX(sv));
+	    if (SvOOK(sv)) {
+		PerlIO_puts(PerlIO_stderr(), "( ");
+		fprintpv(PerlIO_stderr(), SvPVX(sv) - SvIVX(sv), SvIVX(sv), 0);
+		PerlIO_puts(PerlIO_stderr(), " . ) ");
+	    }
 	    fprintpv(PerlIO_stderr(), SvPVX(sv), SvCUR(sv), SvLEN(sv));
 	    PerlIO_printf(PerlIO_stderr(), "\n%*s  CUR = %ld\n%*s  LEN = %ld\n",
 		                           2*level - 2, "", (long)SvCUR(sv),
