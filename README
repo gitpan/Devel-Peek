@@ -41,11 +41,3 @@ AUTHOR BUGS
 Ilya Zakharevich
 ilya@math.ohio-state.edu
 
-CHANGES
-~~~~~~~
-0.3: Some functions return SV * now.
-0.4: Hashes dumped recursively.
-     Additional fields for CV added.
-0.5: Prototypes for functions supported. 
-     Strings are consostently in quotes now.
-     Name changed to Devel::Peek (former ExtUtils::Peek).

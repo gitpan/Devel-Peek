@@ -34,6 +34,7 @@ Dump(\&other::package);
 Dump(\&prototyped);
 Dump(\&Dump);
 Dump ($x, 10);
+DumpArray (10, 1,2,3);
 
 mstat("Point 2");
 

@@ -9,6 +9,7 @@ Devel::Peek - A data debugging tool for the XS programmer
         use Devel::Peek;
         Dump( $a );
         Dump( $a, 5 );
+        DumpArray( 5, $a, $b, ... );
 	mstat "Point 5";
 
 =head1 DESCRIPTION
@@ -33,6 +34,9 @@ C<SvREFCNT_dec()> which can query, increment, and decrement reference
 counts on SVs.  This document will take a passive, and safe, approach
 to data debugging and for that it will describe only the C<Dump()>
 function.
+
+Function C<DumpArray()> allows dumping of multiple values (useful when you
+need to analize returns of functions).
 
 =head1 EXAMPLES
 
@@ -390,15 +394,15 @@ require DynaLoader;
 # names by default without a very good reason. Use EXPORT_OK instead.
 # Do not simply export all your public functions/methods/constants.
 @EXPORT = qw(
-	Dump mstat DeadCode
+	Dump mstat DeadCode DumpArray
 );
 # Other items we are prepared to export if requested
 @EXPORT_OK = qw(
-		Dump SvREFCNT SvREFCNT_inc SvREFCNT_dec mstat DeadCode
+		Dump SvREFCNT SvREFCNT_inc SvREFCNT_dec mstat DeadCode DumpArray
 );
 %EXPORT_TAGS = ('ALL' => \@EXPORT_OK);
 
-$VERSION = $VERSION = 0.82;
+$VERSION = $VERSION = 0.83;
 
 bootstrap Devel::Peek;
 

@@ -1,3 +1,9 @@
+0.3: Some functions return SV * now.
+0.4: Hashes dumped recursively.
+     Additional fields for CV added.
+0.5: Prototypes for functions supported. 
+     Strings are consostently in quotes now.
+     Name changed to Devel::Peek (former ExtUtils::Peek).
 0.7:
 	New function mstat added.
 	Docs added (thanks to Dean Roehrich).
@@ -14,3 +20,7 @@
 	Buglet in the definition of mstat for malloc-less perl corrected.
 0.82:
 	New style PADless CV allowed.
+0.83:
+	DumpArray added.
+	Compatible with PerlIO.
+	When calculating junk inside subs, divide by refcount.
