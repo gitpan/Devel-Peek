@@ -294,22 +294,22 @@ DumpOP(int level, OP* op)
     switch (op->op_type) {
     case OP_GVSV:
     case OP_GV:
-	if (cGVOP->op_gv) {
+	if (((GVOP*)op)->op_gv) {
 	    SV *tmpsv = NEWSV(0,0);
-	    gv_fullname3(tmpsv, cGVOP->op_gv, Nullch);
+	    gv_fullname3(tmpsv, ((GVOP*)op)->op_gv, Nullch);
 	    PerlIO_printf(PerlIO_stderr(), " %s", SvPV(tmpsv, na));
 	    SvREFCNT_dec(tmpsv);            
 	}
         break;
     case OP_CONST:
-        PerlIO_printf(PerlIO_stderr(), " %s", my_sv_peek(cSVOP->op_sv));
+        PerlIO_printf(PerlIO_stderr(), " %s", my_sv_peek(((SVOP*)op)->op_sv));
         break;
     case OP_NEXTSTATE:
     case OP_DBSTATE:
-        if (cCOP->cop_line)
-            PerlIO_printf(PerlIO_stderr(), " L%d", cCOP->cop_line);
-        if (cCOP->cop_label)
-            PerlIO_printf(PerlIO_stderr(), " %s:", cCOP->cop_label);
+        if (((COP*)op)->cop_line)
+            PerlIO_printf(PerlIO_stderr(), " L%d", ((COP*)op)->cop_line);
+        if (((COP*)op)->cop_label)
+            PerlIO_printf(PerlIO_stderr(), " %s:", ((COP*)op)->cop_label);
         break;
     }
     if (op->op_targ && op->op_type != OP_NULL)
@@ -415,19 +415,21 @@ DumpOP(int level, OP* op)
         op->op_type == OP_MATCH  ||
         op->op_type == OP_SUBST)
     {
-        PMOP *pm = cPMOP;
+        PMOP *pm = ((PMOP*)op);
         /*XXX might want to dump other PMOP fields here */ 
         if (pm->op_pmflags
-#if 0 /* 5.005 */
+#ifndef PMf_USED  /* 5.005 */
            || (pm->op_pmregexp && pm->op_pmregexp->check_substr)
 #endif
           )
         {
+#ifdef PMf_USED
 	    if (pm->op_pmflags & PMf_USED)
 	        sv_catpv(tmpsv, ",used");
+#endif
 	    if (pm->op_pmflags & PMf_ONCE)
 	        sv_catpv(tmpsv, ",once");
-#if 0 /* 5.005 */
+#ifdef ROPT_CHECK_ALL /* 5.005 */
 	    if (pm->op_pmregexp && pm->op_pmregexp->check_substr
 	        && !(pm->op_pmregexp->reganch & ROPT_NOSCAN))
 	        sv_catpv(tmpsv, ",scanfirst");
@@ -457,14 +459,14 @@ DumpOP(int level, OP* op)
     case OP_ENTERLOOP:
         PerlIO_printf(PerlIO_stderr(), " ===> %d REDO %d NEXT %d LAST %d",
                       op->op_next->op_seq,
-	              cLOOP->op_redoop->op_seq,
-	              cLOOP->op_nextop->op_seq,
-                      cLOOP->op_lastop->op_seq);
+	              ((LOOP*)op)->op_redoop->op_seq,
+	              ((LOOP*)op)->op_nextop->op_seq,
+                      ((LOOP*)op)->op_lastop->op_seq);
         break;
     case OP_COND_EXPR:
         PerlIO_printf(PerlIO_stderr(), " ===> TRUE %d FALSE %d",
-	              cCONDOP->op_true->op_seq,
-                      cCONDOP->op_false->op_seq);
+	              ((CONDOP*)op)->op_true->op_seq,
+                      ((CONDOP*)op)->op_false->op_seq);
         break;
     case OP_MAPWHILE:
     case OP_GREPWHILE:
@@ -472,7 +474,7 @@ DumpOP(int level, OP* op)
     case OP_AND:
         PerlIO_printf(PerlIO_stderr(), " ===> %d OTHER %d",
 	              op->op_next->op_seq,
-                      cLOGOP->op_other->op_seq);
+                      ((LOGOP*)op)->op_other->op_seq);
         break;
     default:
         if (op->op_next && op->op_next->op_seq)
@@ -481,7 +483,7 @@ DumpOP(int level, OP* op)
     PerlIO_putc(PerlIO_stderr(), '\n');
     if (op->op_flags & OPf_KIDS) {
 	OP *kid;
-	for (kid = cUNOP->op_first; kid; kid = kid->op_sibling) {
+	for (kid = ((UNOP*)op)->op_first; kid; kid = kid->op_sibling) {
 	   DumpOP(level+1,kid);
         }   	
     }
@@ -539,7 +541,7 @@ I32 lim;
 	if (isPRINT(mg->mg_type)) {
 	   m_printf(level, PerlIO_stderr(), "    MG_TYPE = '%c'\n", mg->mg_type);
 	} else {
-	   m_printf(level, PerlIO_stderr(), "    MG_TYPE = '\%o'\n", mg->mg_type);
+	   m_printf(level, PerlIO_stderr(), "    MG_TYPE = '\\%o'\n", mg->mg_type);
         }
         if (mg->mg_flags) {
             m_printf(level, PerlIO_stderr(), "    MG_FLAGS = 0x%02X\n", mg->mg_flags);
@@ -936,6 +938,11 @@ I32 lim;
 	    }
 	}
 	{
+#if defined(PL_Imain_cv) || defined(PL_main_cv)
+#define main_cv PL_main_cv
+#define main_root PL_main_root
+#define main_start PL_main_start
+#endif 
 	    CV *outside = CvOUTSIDE(sv);
 	    m_printf(level, PerlIO_stderr(), "  OUTSIDE = 0x%lx (%s)\n", 
 		     (long)outside, 
@@ -1105,7 +1112,7 @@ DeadCode()
 }
 #endif /* !PURIFY */
 
-#ifdef DEBUGGING_MSTATS
+#if defined(DEBUGGING_MSTATS) || defined(USE_DEBUGGING_MSTATS)
 #   define mstat(str) dump_mstats(str)
 #else
 #   define mstat(str) \

@@ -53,3 +53,6 @@
 	Better indent for AV, HV elts.
 	Address of SV printed.
 	Corrected Zero code which was causing segfaults.
+0.91:
+	Compiles, runs test under 5.005beta2.
+	Update DEBUGGING_MSTATS-less MSTATS.
